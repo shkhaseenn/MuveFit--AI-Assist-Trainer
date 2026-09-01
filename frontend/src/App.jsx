@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "./App.css";
 
 
+
 /* ============================================================
    CAMERA SHUTTER SOUND
 ============================================================ */
@@ -2829,6 +2830,261 @@ function App() {
 
       />
     );
+  }
+
+
+  return null;
+}
+
+
+export default App;
+/* ============================================================
+   APP
+============================================================ */
+
+function App() {
+
+  const [showIntro, setShowIntro] =
+    useState(true);
+
+  const [screen, setScreen] =
+    useState("landing");
+
+  const [selectedExercise, setSelectedExercise] =
+    useState(null);
+
+
+  /* ========================================================
+     CAMERA INTRO
+  ======================================================== */
+
+  if (showIntro) {
+
+    return (
+      <CameraIntro
+        onComplete={() => {
+          setShowIntro(false);
+        }}
+      />
+    );
+
+  }
+
+
+  /* ========================================================
+     LANDING
+  ======================================================== */
+
+  if (screen === "landing") {
+
+    return (
+      <Landing
+
+        onLogin={() => {
+          setScreen("login");
+        }}
+
+        onSignup={() => {
+          setScreen("signup");
+        }}
+
+      />
+    );
+
+  }
+
+
+  /* ========================================================
+     LOGIN
+  ======================================================== */
+
+  if (screen === "login") {
+
+    return (
+      <Auth
+
+        type="login"
+
+        onBack={() => {
+          setScreen("landing");
+        }}
+
+        onSuccess={() => {
+          setScreen("dashboard");
+        }}
+
+      />
+    );
+
+  }
+
+
+  /* ========================================================
+     SIGNUP
+  ======================================================== */
+
+  if (screen === "signup") {
+
+    return (
+      <Auth
+
+        type="signup"
+
+        onBack={() => {
+          setScreen("landing");
+        }}
+
+        onSuccess={() => {
+          setScreen("dashboard");
+        }}
+
+      />
+    );
+
+  }
+
+
+  /* ========================================================
+     DASHBOARD
+  ======================================================== */
+
+  if (screen === "dashboard") {
+
+    return (
+      <Dashboard
+
+        onDashboard={() => {
+          setScreen("dashboard");
+        }}
+
+        onWorkout={() => {
+          setScreen("workout-select");
+        }}
+
+        onHistory={() => {
+          setScreen("history");
+        }}
+
+        onSafety={() => {
+          setScreen("safety");
+        }}
+
+        onProfile={() => {
+          setScreen("profile");
+        }}
+
+      />
+    );
+
+  }
+
+
+  /* ========================================================
+     WORKOUT PAGE
+  ======================================================== */
+
+  if (screen === "workout-select") {
+
+    return (
+      <WorkoutPage
+
+        onBack={() => {
+          setScreen("dashboard");
+        }}
+
+        onStartExercise={(exercise) => {
+
+          setSelectedExercise(exercise);
+
+          setScreen("workout");
+
+        }}
+
+      />
+    );
+
+  }
+
+
+  /* ========================================================
+     ACTUAL WORKOUT CAMERA
+  ======================================================== */
+
+  if (screen === "workout") {
+
+    return (
+      <WorkoutScreen
+
+        exercise={selectedExercise}
+
+        onBack={() => {
+          setScreen("workout-select");
+        }}
+
+        onFinish={() => {
+          setScreen("history");
+        }}
+
+      />
+    );
+
+  }
+
+
+  /* ========================================================
+     HISTORY PAGE
+  ======================================================== */
+
+  if (screen === "history") {
+
+    return (
+      <HistoryPage
+
+        onBack={() => {
+          setScreen("dashboard");
+        }}
+
+      />
+    );
+
+  }
+
+
+  /* ========================================================
+     SAFETY PAGE
+  ======================================================== */
+
+  if (screen === "safety") {
+
+    return (
+      <SafetyPage
+
+        onBack={() => {
+          setScreen("dashboard");
+        }}
+
+      />
+    );
+
+  }
+
+
+  /* ========================================================
+     PROFILE PAGE
+  ======================================================== */
+
+  if (screen === "profile") {
+
+    return (
+      <ProfilePage
+
+        onBack={() => {
+          setScreen("dashboard");
+        }}
+
+      />
+    );
+
   }
 
 

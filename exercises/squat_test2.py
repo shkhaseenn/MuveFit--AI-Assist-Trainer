@@ -8,7 +8,7 @@ from mediapipe.tasks.python import vision
 
 
 # ============================================================
-# MOVECARE AI — SQUAT TEST
+# SETTINGS
 # ============================================================
 
 MODEL_PATH = "pose_landmarker_full.task"
@@ -20,23 +20,100 @@ HEIGHT = 720
 
 
 # ============================================================
+# SQUAT SETTINGS
+# ============================================================
+
+DEEP_SQUAT_ANGLE = 100.0
+
+# Rep starts when EITHER knee reaches this angle
+REP_BOTTOM_ANGLE = 125.0
+
+# Person must return approximately upright before
+# another rep can be counted
+REP_RESET_ANGLE = 145.0
+
+STANDING_ANGLE = 165.0
+
+
+# ============================================================
+# STABILITY
+# ============================================================
+
+DOWN_FRAMES_REQUIRED = 3
+
+UP_FRAMES_REQUIRED = 3
+
+down_frames = 0
+up_frames = 0
+
+
+# ============================================================
+# REP STATE
+# ============================================================
+
+reps = 0
+
+stage = "UP"
+
+rep_counted = False
+
+
+# ============================================================
+# REP COOLDOWN
+# ============================================================
+
+REP_COOLDOWN = 0.5
+
+last_rep_time = 0
+
+
+# ============================================================
 # ANGLE CALCULATION
 # ============================================================
 
 def calculate_angle(a, b, c):
 
-    angle = math.degrees(
-        math.atan2(c[1] - b[1], c[0] - b[0])
-        -
-        math.atan2(a[1] - b[1], a[0] - b[0])
+    ba = (
+        a[0] - b[0],
+        a[1] - b[1]
     )
 
-    angle = abs(angle)
+    bc = (
+        c[0] - b[0],
+        c[1] - b[1]
+    )
 
-    if angle > 180:
-        angle = 360 - angle
+    dot_product = (
+        ba[0] * bc[0] +
+        ba[1] * bc[1]
+    )
 
-    return angle
+    magnitude_ba = math.hypot(
+        ba[0],
+        ba[1]
+    )
+
+    magnitude_bc = math.hypot(
+        bc[0],
+        bc[1]
+    )
+
+    if magnitude_ba * magnitude_bc == 0:
+        return 180.0
+
+    cos_angle = (
+        dot_product /
+        (magnitude_ba * magnitude_bc)
+    )
+
+    cos_angle = max(
+        -1.0,
+        min(1.0, cos_angle)
+    )
+
+    return math.degrees(
+        math.acos(cos_angle)
+    )
 
 
 # ============================================================
@@ -63,7 +140,9 @@ base_options = python.BaseOptions(
 
 options = vision.PoseLandmarkerOptions(
     base_options=base_options,
+
     running_mode=vision.RunningMode.VIDEO,
+
     num_poses=1,
 
     min_pose_detection_confidence=0.5,
@@ -89,7 +168,9 @@ cap = cv2.VideoCapture(
 
 if not cap.isOpened():
 
-    print("ERROR: Could not open camera.")
+    print(
+        "ERROR: Could not open camera."
+    )
 
     detector.close()
 
@@ -131,102 +212,6 @@ cv2.resizeWindow(
 
 
 # ============================================================
-# SQUAT SETTINGS
-# ============================================================
-
-DEEP_SQUAT_ANGLE = 100
-
-STANDING_ANGLE = 165
-
-
-# ============================================================
-# STABILITY
-# ============================================================
-
-DOWN_FRAMES_REQUIRED = 8
-
-UP_FRAMES_REQUIRED = 8
-
-
-down_frames = 0
-
-up_frames = 0
-
-
-# ============================================================
-# REP COOLDOWN
-# ============================================================
-
-REP_COOLDOWN = 1.0
-
-last_rep_time = 0
-
-
-# ============================================================
-# STATE
-# ============================================================
-
-reps = 0
-
-stage = "UP"
-
-
-# ============================================================
-# SCORES
-# ============================================================
-
-depth_score = 100
-
-knee_score = 100
-
-torso_score = 100
-
-overall_score = 100
-
-
-# ============================================================
-# STATISTICS
-# ============================================================
-
-depth_good_frames = 0
-
-depth_bad_frames = 0
-
-knee_good_frames = 0
-
-knee_bad_frames = 0
-
-torso_good_frames = 0
-
-torso_bad_frames = 0
-
-
-# ============================================================
-# ISSUES
-# ============================================================
-
-shallow_squat_frames = 0
-
-knee_alignment_frames = 0
-
-torso_lean_frames = 0
-
-
-# ============================================================
-# DEPTH
-# ============================================================
-
-lowest_knee_angle = 180
-
-
-# ============================================================
-# SESSION
-# ============================================================
-
-session_start = time.time()
-
-
-# ============================================================
 # SKELETON CONNECTIONS
 # ============================================================
 
@@ -260,6 +245,58 @@ connections = [
 
 
 # ============================================================
+# SCORES
+# ============================================================
+
+depth_score = 100
+
+knee_score = 100
+
+torso_score = 100
+
+overall_score = 100
+
+
+# ============================================================
+# STATISTICS
+# ============================================================
+
+depth_good_frames = 0
+depth_bad_frames = 0
+
+knee_good_frames = 0
+knee_bad_frames = 0
+
+torso_good_frames = 0
+torso_bad_frames = 0
+
+
+# ============================================================
+# ISSUES
+# ============================================================
+
+shallow_squat_frames = 0
+
+knee_alignment_frames = 0
+
+torso_lean_frames = 0
+
+
+# ============================================================
+# LOWEST KNEE ANGLE
+# ============================================================
+
+lowest_knee_angle = 180
+
+
+# ============================================================
+# SESSION
+# ============================================================
+
+session_start = time.time()
+
+
+# ============================================================
 # START
 # ============================================================
 
@@ -268,8 +305,8 @@ print("==========================================")
 print("        MOVECARE AI - SQUAT TEST")
 print("==========================================")
 print("")
-print("Both knees must reach <= 100 degrees.")
-print("Then return to >= 165 degrees.")
+print("Bend EITHER knee to start a rep.")
+print("Return upward to complete the movement.")
 print("")
 print("Press Q to finish.")
 print("")
@@ -292,7 +329,9 @@ while True:
 
     if not ret:
 
-        print("ERROR: Could not read camera.")
+        print(
+            "ERROR: Could not read camera."
+        )
 
         break
 
@@ -397,17 +436,14 @@ while True:
 
 
         # ====================================================
-        # PIXEL COORDINATES
+        # PIXEL POINT
         # ====================================================
 
         def pixel_point(point):
 
             return (
-
                 int(point[0] * WIDTH),
-
                 int(point[1] * HEIGHT)
-
             )
 
 
@@ -431,7 +467,6 @@ while True:
         for start, end in connections:
 
             p1 = landmarks[start]
-
             p2 = landmarks[end]
 
             x1 = int(p1.x * WIDTH)
@@ -441,15 +476,10 @@ while True:
             y2 = int(p2.y * HEIGHT)
 
             cv2.line(
-
                 frame,
-
                 (x1, y1),
-
                 (x2, y2),
-
                 (255, 255, 255),
-
                 2
             )
 
@@ -471,20 +501,16 @@ while True:
 
             la,
             ra
+
         ]
 
         for p in points:
 
             cv2.circle(
-
                 frame,
-
                 p,
-
                 6,
-
                 (0, 255, 0),
-
                 -1
             )
 
@@ -494,14 +520,12 @@ while True:
         # ====================================================
 
         left_knee_angle = calculate_angle(
-
             left_hip,
             left_knee,
             left_ankle
         )
 
         right_knee_angle = calculate_angle(
-
             right_hip,
             right_knee,
             right_ankle
@@ -509,20 +533,30 @@ while True:
 
 
         current_knee_angle = (
-
             left_knee_angle +
             right_knee_angle
+        ) / 2.0
 
-        ) / 2
+
+        # ====================================================
+        # EITHER KNEE FOR REP DETECTION
+        # ====================================================
+
+        lowest_current_knee = min(
+            left_knee_angle,
+            right_knee_angle
+        )
 
 
         # ====================================================
         # LOWEST DEPTH
         # ====================================================
 
-        if current_knee_angle < lowest_knee_angle:
+        if lowest_current_knee < lowest_knee_angle:
 
-            lowest_knee_angle = current_knee_angle
+            lowest_knee_angle = (
+                lowest_current_knee
+            )
 
 
         # ====================================================
@@ -530,14 +564,12 @@ while True:
         # ====================================================
 
         left_torso_angle = calculate_angle(
-
             left_shoulder,
             left_hip,
             left_knee
         )
 
         right_torso_angle = calculate_angle(
-
             right_shoulder,
             right_hip,
             right_knee
@@ -545,15 +577,13 @@ while True:
 
 
         torso_angle = (
-
             left_torso_angle +
             right_torso_angle
-
-        ) / 2
+        ) / 2.0
 
 
         # ====================================================
-        # FORM SCORES FOR CURRENT FRAME
+        # FORM SCORES
         # ====================================================
 
         current_depth_score = 100
@@ -566,7 +596,7 @@ while True:
 
 
         # ====================================================
-        # ONLY SCORE DEPTH DURING SQUAT
+        # DEPTH SCORE
         # ====================================================
 
         if current_knee_angle < 160:
@@ -610,10 +640,8 @@ while True:
 
                 feedback = "BEND YOUR KNEES"
 
-
         else:
 
-            # Standing / transition.
             current_depth_score = 100
 
 
@@ -622,10 +650,8 @@ while True:
         # ====================================================
 
         knee_difference = abs(
-
             left_knee_angle -
             right_knee_angle
-
         )
 
 
@@ -692,62 +718,67 @@ while True:
 
                 feedback = "REDUCE FORWARD LEAN"
 
-
         else:
 
             current_torso_score = 100
 
 
         # ====================================================
-        # OVERALL FRAME SCORE
-        # ====================================================
-
-        current_frame_score = (
-
-            current_depth_score * 0.40 +
-
-            current_knee_score * 0.35 +
-
-            current_torso_score * 0.25
-
-        )
-
-
-        # ====================================================
         # REP DETECTION
+        #
+        # EITHER KNEE <= 125 = DOWN
+        # THEN RETURN >= 145 = READY AGAIN
         # ====================================================
 
         current_time = time.time()
 
 
         # ----------------------------------------------------
-        # GOING DOWN
+        # BEND
         # ----------------------------------------------------
 
-        if current_knee_angle <= DEEP_SQUAT_ANGLE:
+        if lowest_current_knee <= REP_BOTTOM_ANGLE:
 
             down_frames += 1
 
             up_frames = 0
 
+
             if (
-
-                down_frames >= DOWN_FRAMES_REQUIRED
-
-                and
-
-                stage == "UP"
-
+                down_frames >=
+                DOWN_FRAMES_REQUIRED
             ):
 
                 stage = "DOWN"
 
 
+                # Count only once
+                if not rep_counted:
+
+                    if (
+                        current_time -
+                        last_rep_time
+                        >= REP_COOLDOWN
+                    ):
+
+                        reps += 1
+
+                        last_rep_time = (
+                            current_time
+                        )
+
+                        rep_counted = True
+
+                        print(
+                            f"Squat rep completed: {reps}"
+                        )
+
+
         # ----------------------------------------------------
-        # RETURNING UP
+        # RETURN UP
         # ----------------------------------------------------
 
-        elif current_knee_angle >= STANDING_ANGLE:
+        elif lowest_current_knee >= REP_RESET_ANGLE:
 
             up_frames += 1
 
@@ -755,28 +786,14 @@ while True:
 
 
             if (
-
-                up_frames >= UP_FRAMES_REQUIRED
-
-                and
-
-                stage == "DOWN"
-
-                and
-
-                current_time - last_rep_time >= REP_COOLDOWN
-
+                up_frames >=
+                UP_FRAMES_REQUIRED
             ):
-
-                reps += 1
-
-                last_rep_time = current_time
 
                 stage = "UP"
 
-                print(
-                    f"Squat rep completed: {reps}"
-                )
+                # Allow another rep
+                rep_counted = False
 
 
         # ----------------------------------------------------
@@ -794,12 +811,17 @@ while True:
         # RUNNING SCORES
         # ====================================================
 
-        depth_score = current_depth_score
+        depth_score = (
+            current_depth_score
+        )
 
-        knee_score = current_knee_score
+        knee_score = (
+            current_knee_score
+        )
 
-        torso_score = current_torso_score
-
+        torso_score = (
+            current_torso_score
+        )
 
         overall_score = (
 
@@ -813,190 +835,325 @@ while True:
 
 
         # ====================================================
-        # UI PANEL
+        # FORM COLOR
         # ====================================================
 
-        cv2.rectangle(
+        if overall_score >= 85:
 
-            frame,
+            form_color = (
+                0,
+                220,
+                0
+            )
 
-            (20, 20),
+        elif overall_score >= 65:
 
-            (470, 265),
+            form_color = (
+                0,
+                220,
+                255
+            )
 
-            (0, 0, 0),
+        else:
 
-            -1
-        )
-
-
-        cv2.putText(
-
-            frame,
-
-            "MOVECARE AI - SQUAT",
-
-            (35, 55),
-
-            cv2.FONT_HERSHEY_SIMPLEX,
-
-            0.8,
-
-            (255, 255, 255),
-
-            2
-        )
-
-
-        cv2.putText(
-
-            frame,
-
-            f"REPS: {reps}",
-
-            (35, 95),
-
-            cv2.FONT_HERSHEY_SIMPLEX,
-
-            0.7,
-
-            (255, 255, 255),
-
-            2
-        )
-
-
-        cv2.putText(
-
-            frame,
-
-            f"KNEE: {current_knee_angle:.0f} deg",
-
-            (35, 130),
-
-            cv2.FONT_HERSHEY_SIMPLEX,
-
-            0.6,
-
-            (255, 255, 255),
-
-            2
-        )
-
-
-        cv2.putText(
-
-            frame,
-
-            f"DEPTH: {depth_score:.0f}%",
-
-            (35, 165),
-
-            cv2.FONT_HERSHEY_SIMPLEX,
-
-            0.6,
-
-            (255, 255, 255),
-
-            2
-        )
-
-
-        cv2.putText(
-
-            frame,
-
-            f"KNEES: {knee_score:.0f}%",
-
-            (35, 200),
-
-            cv2.FONT_HERSHEY_SIMPLEX,
-
-            0.6,
-
-            (255, 255, 255),
-
-            2
-        )
-
-
-        cv2.putText(
-
-            frame,
-
-            f"TORSO: {torso_score:.0f}%",
-
-            (35, 235),
-
-            cv2.FONT_HERSHEY_SIMPLEX,
-
-            0.6,
-
-            (255, 255, 255),
-
-            2
-        )
+            form_color = (
+                0,
+                0,
+                255
+            )
 
 
         # ====================================================
-        # RIGHT SIDE
+        # FOUR CORNER FRAME
+        # ====================================================
+
+        corner_color = (
+            220,
+            220,
+            220
+        )
+
+        margin = 18
+
+        corner_length = 32
+
+        corner_thickness = 2
+
+
+        # TOP LEFT
+
+        cv2.line(
+            frame,
+            (margin, margin),
+            (
+                margin +
+                corner_length,
+                margin
+            ),
+            corner_color,
+            corner_thickness
+        )
+
+        cv2.line(
+            frame,
+            (margin, margin),
+            (
+                margin,
+                margin +
+                corner_length
+            ),
+            corner_color,
+            corner_thickness
+        )
+
+
+        # TOP RIGHT
+
+        cv2.line(
+            frame,
+            (
+                WIDTH - margin,
+                margin
+            ),
+            (
+                WIDTH -
+                margin -
+                corner_length,
+                margin
+            ),
+            corner_color,
+            corner_thickness
+        )
+
+        cv2.line(
+            frame,
+            (
+                WIDTH - margin,
+                margin
+            ),
+            (
+                WIDTH - margin,
+                margin +
+                corner_length
+            ),
+            corner_color,
+            corner_thickness
+        )
+
+
+        # BOTTOM LEFT
+
+        cv2.line(
+            frame,
+            (
+                margin,
+                HEIGHT - margin
+            ),
+            (
+                margin +
+                corner_length,
+                HEIGHT - margin
+            ),
+            corner_color,
+            corner_thickness
+        )
+
+        cv2.line(
+            frame,
+            (
+                margin,
+                HEIGHT - margin
+            ),
+            (
+                margin,
+                HEIGHT -
+                margin -
+                corner_length
+            ),
+            corner_color,
+            corner_thickness
+        )
+
+
+        # BOTTOM RIGHT
+
+        cv2.line(
+            frame,
+            (
+                WIDTH - margin,
+                HEIGHT - margin
+            ),
+            (
+                WIDTH -
+                margin -
+                corner_length,
+                HEIGHT - margin
+            ),
+            corner_color,
+            corner_thickness
+        )
+
+        cv2.line(
+            frame,
+            (
+                WIDTH - margin,
+                HEIGHT - margin
+            ),
+            (
+                WIDTH - margin,
+                HEIGHT -
+                margin -
+                corner_length
+            ),
+            corner_color,
+            corner_thickness
+        )
+
+
+        # ====================================================
+        # TOP LINE — EXERCISE
         # ====================================================
 
         cv2.putText(
-
             frame,
-
-            f"FORM: {overall_score:.0f}%",
-
-            (950, 55),
-
+            "SQUAT",
+            (38, 50),
             cv2.FONT_HERSHEY_SIMPLEX,
-
-            0.7,
-
+            0.62,
             (255, 255, 255),
+            2,
+            cv2.LINE_AA
+        )
 
-            2
+
+        # ====================================================
+        # TOP CENTER — CAMERA
+        # ====================================================
+
+        camera_text = "CAMERA"
+
+        camera_size = cv2.getTextSize(
+            camera_text,
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.45,
+            1
+        )[0]
+
+
+        camera_x = (
+            WIDTH // 2 -
+            camera_size[0] // 2
         )
 
 
         cv2.putText(
-
             frame,
-
-            f"STAGE: {stage}",
-
-            (950, 90),
-
+            camera_text,
+            (camera_x, 50),
             cv2.FONT_HERSHEY_SIMPLEX,
-
-            0.6,
-
-            (255, 255, 255),
-
-            2
+            0.45,
+            (165, 165, 165),
+            1,
+            cv2.LINE_AA
         )
 
 
         # ====================================================
-        # FEEDBACK
+        # TOP RIGHT — FORM
         # ====================================================
 
+        form_text = (
+            f"FORM {overall_score:.0f}%"
+        )
+
+        form_size = cv2.getTextSize(
+            form_text,
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.62,
+            2
+        )[0]
+
+
         cv2.putText(
-
             frame,
+            form_text,
+            (
+                WIDTH -
+                form_size[0] -
+                38,
+                50
+            ),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.62,
+            form_color,
+            2,
+            cv2.LINE_AA
+        )
 
+
+        # ====================================================
+        # REP — LARGE RED
+        # ====================================================
+
+        rep_text = (
+            f"{reps:02d}"
+        )
+
+
+        cv2.putText(
+            frame,
+            "REP",
+            (38, HEIGHT - 120),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.45,
+            (160, 160, 160),
+            1,
+            cv2.LINE_AA
+        )
+
+
+        cv2.putText(
+            frame,
+            rep_text,
+            (35, HEIGHT - 55),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1.8,
+            (0, 0, 255),
+            5,
+            cv2.LINE_AA
+        )
+
+
+        # ====================================================
+        # FEEDBACK — BOTTOM CENTER
+        # ====================================================
+
+        feedback_size = cv2.getTextSize(
             feedback,
-
-            (800, 650),
-
             cv2.FONT_HERSHEY_SIMPLEX,
-
-            0.8,
-
-            (255, 255, 255),
-
+            0.52,
             2
+        )[0]
+
+
+        feedback_x = (
+            WIDTH // 2 -
+            feedback_size[0] // 2
+        )
+
+
+        cv2.putText(
+            frame,
+            feedback,
+            (
+                feedback_x,
+                HEIGHT - 35
+            ),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.52,
+            form_color,
+            2,
+            cv2.LINE_AA
         )
 
 
@@ -1006,21 +1163,255 @@ while True:
 
     else:
 
-        cv2.putText(
+        stage = "UP"
 
+        rep_counted = False
+
+        down_frames = 0
+
+        up_frames = 0
+
+
+        # Four-corner frame
+
+        corner_color = (
+            220,
+            220,
+            220
+        )
+
+        margin = 18
+
+        corner_length = 32
+
+
+        # TOP LEFT
+
+        cv2.line(
             frame,
+            (margin, margin),
+            (
+                margin +
+                corner_length,
+                margin
+            ),
+            corner_color,
+            2
+        )
 
-            "NO PERSON DETECTED",
+        cv2.line(
+            frame,
+            (margin, margin),
+            (
+                margin,
+                margin +
+                corner_length
+            ),
+            corner_color,
+            2
+        )
 
-            (420, 350),
 
+        # TOP RIGHT
+
+        cv2.line(
+            frame,
+            (
+                WIDTH - margin,
+                margin
+            ),
+            (
+                WIDTH -
+                margin -
+                corner_length,
+                margin
+            ),
+            corner_color,
+            2
+        )
+
+        cv2.line(
+            frame,
+            (
+                WIDTH - margin,
+                margin
+            ),
+            (
+                WIDTH - margin,
+                margin +
+                corner_length
+            ),
+            corner_color,
+            2
+        )
+
+
+        # BOTTOM LEFT
+
+        cv2.line(
+            frame,
+            (
+                margin,
+                HEIGHT - margin
+            ),
+            (
+                margin +
+                corner_length,
+                HEIGHT - margin
+            ),
+            corner_color,
+            2
+        )
+
+        cv2.line(
+            frame,
+            (
+                margin,
+                HEIGHT - margin
+            ),
+            (
+                margin,
+                HEIGHT -
+                margin -
+                corner_length
+            ),
+            corner_color,
+            2
+        )
+
+
+        # BOTTOM RIGHT
+
+        cv2.line(
+            frame,
+            (
+                WIDTH - margin,
+                HEIGHT - margin
+            ),
+            (
+                WIDTH -
+                margin -
+                corner_length,
+                HEIGHT - margin
+            ),
+            corner_color,
+            2
+        )
+
+        cv2.line(
+            frame,
+            (
+                WIDTH - margin,
+                HEIGHT - margin
+            ),
+            (
+                WIDTH - margin,
+                HEIGHT -
+                margin -
+                corner_length
+            ),
+            corner_color,
+            2
+        )
+
+
+        # TOP LINE
+
+        cv2.putText(
+            frame,
+            "SQUAT",
+            (38, 50),
             cv2.FONT_HERSHEY_SIMPLEX,
-
-            1,
-
+            0.62,
             (255, 255, 255),
+            2,
+            cv2.LINE_AA
+        )
 
-            3
+
+        camera_text = "CAMERA"
+
+        camera_size = cv2.getTextSize(
+            camera_text,
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.45,
+            1
+        )[0]
+
+        camera_x = (
+            WIDTH // 2 -
+            camera_size[0] // 2
+        )
+
+        cv2.putText(
+            frame,
+            camera_text,
+            (camera_x, 50),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.45,
+            (165, 165, 165),
+            1,
+            cv2.LINE_AA
+        )
+
+
+        # FORM
+
+        cv2.putText(
+            frame,
+            "FORM --",
+            (
+                WIDTH - 145,
+                50
+            ),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.62,
+            (160, 160, 160),
+            1,
+            cv2.LINE_AA
+        )
+
+
+        # REP
+
+        cv2.putText(
+            frame,
+            "REP",
+            (38, HEIGHT - 120),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.45,
+            (160, 160, 160),
+            1,
+            cv2.LINE_AA
+        )
+
+
+        cv2.putText(
+            frame,
+            f"{reps:02d}",
+            (35, HEIGHT - 55),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1.8,
+            (0, 0, 255),
+            5,
+            cv2.LINE_AA
+        )
+
+
+        # NO PERSON
+
+        cv2.putText(
+            frame,
+            "GET INTO FRAME",
+            (
+                WIDTH // 2 - 100,
+                HEIGHT - 35
+            ),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.52,
+            (0, 0, 255),
+            2,
+            cv2.LINE_AA
         )
 
 
@@ -1029,9 +1420,7 @@ while True:
     # ========================================================
 
     cv2.imshow(
-
         WINDOW,
-
         frame
     )
 
@@ -1042,6 +1431,7 @@ while True:
 
     key = cv2.waitKey(1) & 0xFF
 
+
     if key == ord("q"):
 
         break
@@ -1051,7 +1441,11 @@ while True:
 # CLEANUP
 # ============================================================
 
-session_duration = time.time() - session_start
+session_duration = (
+    time.time() -
+    session_start
+)
+
 
 cap.release()
 
@@ -1064,7 +1458,10 @@ detector.close()
 # FINAL SCORES
 # ============================================================
 
-if depth_good_frames + depth_bad_frames > 0:
+if (
+    depth_good_frames +
+    depth_bad_frames
+) > 0:
 
     final_depth_score = (
 
@@ -1081,7 +1478,10 @@ else:
     final_depth_score = 100
 
 
-if knee_good_frames + knee_bad_frames > 0:
+if (
+    knee_good_frames +
+    knee_bad_frames
+) > 0:
 
     final_knee_score = (
 
@@ -1098,7 +1498,10 @@ else:
     final_knee_score = 100
 
 
-if torso_good_frames + torso_bad_frames > 0:
+if (
+    torso_good_frames +
+    torso_bad_frames
+) > 0:
 
     final_torso_score = (
 
@@ -1265,7 +1668,6 @@ exercise_result = {
 # FINAL REPORT
 # ============================================================
 
-print("")
 print("")
 print("==========================================")
 print("        MOVECARE AI - SQUAT REPORT")
