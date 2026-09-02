@@ -1,0 +1,32 @@
+[
+  {
+    "name": "BACKEND_IMPORTS",
+    "status": "FAIL",
+    "output": "---EXCEPTION---\nTraceback (most recent call last):\n  File \"<string>\", line 10, in run_case\n  File \"<string>\", line 26, in backend_imports\n  File \"c:\\Users\\s8001\\OneDrive\\Desktop\\Muve-fit\\MuveFit--AI-Assist-Trainer\\backend\\main.py\", line 1, in <module>\n    from fastapi import FastAPI\nModuleNotFoundError: No module named 'fastapi'"
+  },
+  {
+    "name": "LEGACY_EXERCISE_IMPORTS",
+    "status": "FAIL",
+    "output": "---EXCEPTION---\nTraceback (most recent call last):\n  File \"<string>\", line 10, in run_case\n  File \"<string>\", line 46, in legacy_imports\n  File \"<string>\", line 21, in import_module_from_path\n  File \"<frozen importlib._bootstrap_external>\", line 940, in exec_module\n  File \"<frozen importlib._bootstrap>\", line 241, in _call_with_frames_removed\n  File \"c:\\Users\\s8001\\OneDrive\\Desktop\\Muve-fit\\MuveFit--AI-Assist-Trainer\\exercises\\squat_test2.py\", line 1, in <module>\n    import cv2\nModuleNotFoundError: No module named 'cv2'"
+  },
+  {
+    "name": "EXERCISE_REGISTRY",
+    "status": "PASS",
+    "output": "squat SquatAnalyzer\nplank PlankAnalyzer\nburpee BurpeeAnalyzer\nsquat_hold SquatHoldAnalyzer\nglute_bridge GluteBridgeAnalyzer"
+  },
+  {
+    "name": "GLUTE_BRIDGE_ANALYZER",
+    "status": "PASS",
+    "output": "state_before down\nExerciseAnalysis(exercise='glute_bridge', state='down', is_valid=False, reps=0, hold_seconds=0.0, form_score=70.0, metrics={'shoulder_y': 0.2, 'hip_y': 0.15, 'knee_y': 0.3, 'bridge': False}, message='bridge not yet active')"
+  },
+  {
+    "name": "FASTAPI_HEALTH",
+    "status": "FAIL",
+    "output": "---EXCEPTION---\nTraceback (most recent call last):\n  File \"<string>\", line 10, in run_case\n  File \"<string>\", line 77, in fastapi_health\nModuleNotFoundError: No module named 'fastapi'"
+  },
+  {
+    "name": "PYTEST_SMOKE",
+    "status": "FAIL",
+    "output": "---EXCEPTION---\nTraceback (most recent call last):\n  File \"<string>\", line 10, in run_case\n  File \"<string>\", line 86, in pytest_smoke\nModuleNotFoundError: No module named 'pytest'"
+  }
+]
